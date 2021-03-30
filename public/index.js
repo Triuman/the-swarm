@@ -7,7 +7,8 @@ import { OrbitControls } from './build/jsm/controls/OrbitControls.js';
 
 let container, stats, clock, controls;
 let camera, scene, renderer;
-let fishArray = [];
+const fishArray = [];
+const minSpeed = 1;
 
 window.onload = () => {
   init();
@@ -17,7 +18,7 @@ window.onload = () => {
 function init() {
   container = document.getElementById('container');
 
-  camera = new THREE.PerspectiveCamera(25, window.innerWidth / window.innerHeight, 1, 1000);
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
   camera.position.set(15, 10, -15);
 
   scene = new THREE.Scene();
@@ -27,7 +28,7 @@ function init() {
   // collada
 
   const loader = new ColladaLoader();
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 50; i++) {
     loader.load('./models/fish_nip.dae', function (collada) {
       const avatar = collada.scene;
       avatar.scale.x = avatar.scale.y = avatar.scale.z = 0.2;
@@ -44,7 +45,11 @@ function init() {
       mixer.timeScale = Math.random(); // add this
       mixer.clipAction(animations[0]).play();
 
-      avatar.position.set(i, 0, i * Math.random() * 10);
+      avatar.position.set(
+        Math.random() * 10 - Math.random() * 20,
+        Math.random() * 10 - Math.random() * 20,
+        Math.random() * 10 - Math.random() * 20
+      );
 
       fishArray.push(new Fish(avatar, mixer));
       scene.add(avatar);
@@ -116,23 +121,82 @@ function render() {
 }
 
 class Fish {
+  id;
   avatar;
   mixer;
   velocity;
   constructor(avatar, mixer) {
+    this.id = Math.floor(Math.random() * 10000).toString();
     this.avatar = avatar;
     this.mixer = mixer;
-    this.velocity = new THREE.Vector3(Math.random() / 50, Math.random() / 50, Math.random() / 50);
+    this.velocity = new THREE.Vector3(
+      Math.random() / 20 - Math.random() / 10,
+      Math.random() / 20 - Math.random() / 10,
+      Math.random() / 20 - Math.random() / 10
+    );
   }
 
   update = (delta) => {
+    const targetPosition = this.getTargetPosition();
+    this.velocity.add(targetPosition.sub(this.avatar.position).divideScalar(1));
+
+    this.mixer.timeScale = this.velocity.length() * 40;
     this.mixer.update(delta);
 
+    if (isNaN(this.velocity.x)) {
+      var a = 0;
+    }
     this.avatar.position.add(this.velocity);
     // Face to the direction it goes
-    const angleX = Math.atan2(-this.velocity.z, -this.velocity.y);
-    const angleZ = Math.atan2(this.velocity.x, this.velocity.y);
-    this.avatar.rotation.x = angleX;
-    this.avatar.rotation.z = angleZ;
+    if (this.velocity.x > 0) {
+      if (this.velocity.y > 0) {
+        const angleX = Math.atan2(-this.velocity.z, -this.velocity.y);
+        const angleZ = Math.atan2(this.velocity.x, this.velocity.y);
+        this.avatar.rotation.x = angleX;
+        this.avatar.rotation.z = angleZ;
+      } else {
+        const angleX = Math.atan2(this.velocity.z, this.velocity.y);
+        const angleZ = Math.atan2(this.velocity.x, -this.velocity.y);
+        this.avatar.rotation.x = angleX;
+        this.avatar.rotation.z = angleZ;
+      }
+    } else {
+      const angleX = Math.atan2(this.velocity.z, this.velocity.y);
+      const angleZ = Math.atan2(-this.velocity.x, this.velocity.y);
+      this.avatar.rotation.x = angleX;
+      this.avatar.rotation.z = angleZ;
+    }
   };
+
+  getTargetPosition = () => {
+    const centerWeight = getCenterWeight(this.avatar.position);
+    const peerFishTargetPos = [];
+    for (let f = 0; f < fishArray.length; f++) {
+      const peerFish = fishArray[f];
+      if (peerFish.id === this.id) continue;
+      const peerPosition = peerFish.avatar.position.clone().sub(this.avatar.position);
+      if (peerPosition.length() > 5) continue;
+      const weight = getPeerWeight(this.avatar.position, peerFish.avatar.position, this.velocity, peerFish.velocity);
+      if (!weight) {
+        var a = 0;
+      }
+      peerPosition.multiplyScalar(weight);
+      peerFishTargetPos.push(peerPosition);
+    }
+    let targetPosition = this.avatar.position.clone();
+    for (let p = 0; p < peerFishTargetPos.length; p++) {
+      targetPosition.add(peerFishTargetPos[p]);
+    }
+    targetPosition.divideScalar(centerWeight / 100000000 + 1);
+    return targetPosition;
+  };
+}
+
+const center = new THREE.Vector3();
+function getCenterWeight(position) {
+  return Math.pow(position.distanceTo(center), 2);
+}
+
+function getPeerWeight(position1, position2, velocity1, velocity2) {
+  return 1 / (Math.sqrt(position1.distanceTo(position2)) * Math.sqrt(velocity1.distanceTo(velocity2))) / 10000;
 }
