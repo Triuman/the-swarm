@@ -160,14 +160,18 @@ class Fish {
       const peerFish = fishArray[f];
       if (peerFish.id === this.id) continue;
       const peerPosition = peerFish.avatar.position.clone().sub(this.avatar.position);
-      if (peerPosition.length() > 4) continue;
+      if (peerPosition.length() > 40) continue;
       const weight = getPeerWeight(this.avatar.position, peerFish.avatar.position, this.velocity, peerFish.velocity);
       peerPosition.multiplyScalar(weight);
       peerFishTargetPos.push(peerPosition);
     }
+    peerFishTargetPos.sort((a, b) => a.length() - b.length());
     let targetPosition = this.avatar.position.clone();
-    for (let p = 0; p < peerFishTargetPos.length; p++) {
+    for (let p = 0; p < peerFishTargetPos.slice(1, 30).length; p++) {
       targetPosition.add(peerFishTargetPos[p].divideScalar(peerFishTargetPos.length * 0.4));
+    }
+    for (let p = 0; p < peerFishTargetPos.slice(170, 199).length; p++) {
+      targetPosition.sub(peerFishTargetPos[p].divideScalar(peerFishTargetPos.length * 0.4));
     }
     targetPosition.divideScalar(centerWeight / 100000000 + 1);
     return targetPosition;
@@ -180,5 +184,5 @@ function getCenterWeight(position) {
 }
 
 function getPeerWeight(position1, position2, velocity1, velocity2) {
-  return 1 / (Math.sqrt(position1.distanceTo(position2)) * Math.sqrt(velocity1.distanceTo(velocity2))) / 10000;
+  return 1 / (Math.sqrt(position1.distanceTo(position2)) * Math.pow(velocity1.distanceTo(velocity2), 2)) / 100000;
 }
