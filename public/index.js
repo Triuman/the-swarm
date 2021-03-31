@@ -143,29 +143,117 @@ class Fish {
     this.mixer.timeScale = this.velocity.length() * 40;
     this.mixer.update(delta);
 
-    if (isNaN(this.velocity.x)) {
-      var a = 0;
-    }
+    // this.velocity.x = -0.01;
+    // this.velocity.y = -0.01;
+    // this.velocity.z = -0.01;
+
     this.avatar.position.add(this.velocity);
     // Face to the direction it goes
-    if (this.velocity.x > 0) {
-      if (this.velocity.y > 0) {
-        const angleX = Math.atan2(-this.velocity.z, -this.velocity.y);
-        const angleZ = Math.atan2(this.velocity.x, this.velocity.y);
-        this.avatar.rotation.x = angleX;
-        this.avatar.rotation.z = angleZ;
+
+    if (this.velocity.x >= 0) {
+      if (this.velocity.y >= 0) {
+        if (this.velocity.z >= 0) {
+          this.avatar.quaternion.setFromEuler(
+            new THREE.Euler(
+              Math.atan2(this.velocity.z, this.velocity.y),
+              Math.atan2(this.velocity.z, this.velocity.x),
+              Math.atan2(this.velocity.x, -this.velocity.y),
+              'XYZ'
+            )
+          );
+        } else {
+          this.avatar.quaternion.setFromEuler(
+            new THREE.Euler(
+              Math.atan2(this.velocity.z, this.velocity.y),
+              Math.atan2(this.velocity.z, this.velocity.x),
+              Math.atan2(this.velocity.x, -this.velocity.y),
+              'XYZ'
+            )
+          );
+        }
       } else {
-        const angleX = Math.atan2(this.velocity.z, this.velocity.y);
-        const angleZ = Math.atan2(this.velocity.x, -this.velocity.y);
-        this.avatar.rotation.x = angleX;
-        this.avatar.rotation.z = angleZ;
+        if (this.velocity.z >= 0) {
+          this.avatar.quaternion.setFromEuler(
+            new THREE.Euler(
+              Math.atan2(this.velocity.z, this.velocity.y),
+              Math.atan2(this.velocity.z, this.velocity.x),
+              Math.atan2(this.velocity.x, this.velocity.y),
+              'XYZ'
+            )
+          );
+        } else {
+          this.avatar.quaternion.setFromEuler(
+            new THREE.Euler(
+              Math.atan2(-this.velocity.y, -this.velocity.z),
+              Math.atan2(this.velocity.z, this.velocity.x),
+              Math.atan2(this.velocity.x, -this.velocity.z),
+              'XYZ'
+            )
+          );
+        }
       }
     } else {
-      const angleX = Math.atan2(this.velocity.z, this.velocity.y);
-      const angleZ = Math.atan2(-this.velocity.x, this.velocity.y);
-      this.avatar.rotation.x = angleX;
-      this.avatar.rotation.z = angleZ;
+      if (this.velocity.y >= 0) {
+        if (this.velocity.z >= 0) {
+          this.avatar.quaternion.setFromEuler(
+            new THREE.Euler(
+              Math.atan2(-this.velocity.z, -this.velocity.y),
+              Math.atan2(-this.velocity.z, -this.velocity.x),
+              Math.atan2(this.velocity.x, this.velocity.y),
+              'XYZ'
+            )
+          );
+        } else {
+          this.avatar.quaternion.setFromEuler(
+            new THREE.Euler(
+              Math.atan2(-this.velocity.z, -this.velocity.y),
+              Math.atan2(-this.velocity.z, -this.velocity.x),
+              Math.atan2(this.velocity.x, this.velocity.y),
+              'XYZ'
+            )
+          );
+        }
+      } else {
+        if (this.velocity.z >= 0) {
+          this.avatar.quaternion.setFromEuler(
+            new THREE.Euler(
+              Math.atan2(this.velocity.z, this.velocity.y),
+              Math.atan2(-this.velocity.z, -this.velocity.x),
+              Math.atan2(this.velocity.x, this.velocity.y),
+              'XYZ'
+            )
+          );
+        } else {
+          this.avatar.quaternion.setFromEuler(
+            new THREE.Euler(
+              Math.atan2(-this.velocity.z, -this.velocity.y),
+              Math.atan2(-this.velocity.z, -this.velocity.x),
+              Math.atan2(this.velocity.x, -this.velocity.y),
+              'XYZ'
+            )
+          );
+        }
+      }
     }
+
+    // if (this.velocity.x > 0) {
+    //   if (this.velocity.y > 0) {
+    //     const angleX = Math.atan2(-this.velocity.z, -this.velocity.y);
+    //     const angleZ = Math.atan2(this.velocity.x, this.velocity.y);
+    //     this.avatar.rotation.x = angleX;
+    //     this.avatar.rotation.z = angleZ;
+    //   } else {
+    //     const angleX = Math.atan2(this.velocity.z, this.velocity.y);
+    //     const angleZ = Math.atan2(this.velocity.x, -this.velocity.y);
+    //     this.avatar.rotation.x = angleX;
+    //     this.avatar.rotation.z = angleZ;
+    //   }
+    // } else {
+    //   const angleX = Math.atan2(this.velocity.z, this.velocity.y);
+    //   const angleZ = Math.atan2(-this.velocity.x, this.velocity.y);
+    //   this.avatar.rotation.x = angleX;
+    //   this.avatar.rotation.z = angleZ;
+    // }
   };
 
   getTargetPosition = () => {
@@ -175,17 +263,14 @@ class Fish {
       const peerFish = fishArray[f];
       if (peerFish.id === this.id) continue;
       const peerPosition = peerFish.avatar.position.clone().sub(this.avatar.position);
-      if (peerPosition.length() > 5) continue;
+      if (peerPosition.length() > 12) continue;
       const weight = getPeerWeight(this.avatar.position, peerFish.avatar.position, this.velocity, peerFish.velocity);
-      if (!weight) {
-        var a = 0;
-      }
       peerPosition.multiplyScalar(weight);
       peerFishTargetPos.push(peerPosition);
     }
     let targetPosition = this.avatar.position.clone();
     for (let p = 0; p < peerFishTargetPos.length; p++) {
-      targetPosition.add(peerFishTargetPos[p]);
+      targetPosition.add(peerFishTargetPos[p].divideScalar(peerFishTargetPos.length));
     }
     targetPosition.divideScalar(centerWeight / 100000000 + 1);
     return targetPosition;
