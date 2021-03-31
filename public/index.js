@@ -263,16 +263,16 @@ class Fish {
       const peerFish = fishArray[f];
       if (peerFish.id === this.id) continue;
       const peerPosition = peerFish.avatar.position.clone().sub(this.avatar.position);
-      if (peerPosition.length() > 12) continue;
+      if (peerPosition.length() > 8) continue;
       const weight = getPeerWeight(this.avatar.position, peerFish.avatar.position, this.velocity, peerFish.velocity);
       peerPosition.multiplyScalar(weight);
       peerFishTargetPos.push(peerPosition);
     }
     let targetPosition = this.avatar.position.clone();
     for (let p = 0; p < peerFishTargetPos.length; p++) {
-      targetPosition.add(peerFishTargetPos[p].divideScalar(peerFishTargetPos.length));
+      targetPosition.add(peerFishTargetPos[p].divideScalar(peerFishTargetPos.length * 0.8));
     }
-    targetPosition.divideScalar(centerWeight / 100000000 + 1);
+    targetPosition.divideScalar(centerWeight / 10000000 + 1);
     return targetPosition;
   };
 }
