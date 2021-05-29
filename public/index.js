@@ -8,27 +8,38 @@ import { OrbitControls } from './build/jsm/controls/OrbitControls.js';
 let container, stats, clock, controls;
 let camera, scene, renderer;
 const fishArray = [];
-const minSpeed = 1;
+const mouse = new THREE.Vector2();
+let mouseRay;
+const raycaster = new THREE.Raycaster();
 
 window.onload = () => {
   init();
   animate();
 };
 
+function onMouseMove(event) {
+  // calculate mouse position in normalized device coordinates
+  // (-1 to +1) for both components
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+}
+
 function init() {
   container = document.getElementById('container');
 
-  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
   camera.position.set(15, 10, -15);
 
   scene = new THREE.Scene();
 
   clock = new THREE.Clock();
 
+  window.addEventListener('mousemove', onMouseMove, false);
+
   // collada
 
   const loader = new ColladaLoader();
-  for (let i = 0; i < 200; i++) {
+  for (let i = 0; i < 150; i++) {
     loader.load('./models/fish_nip.dae', function (collada) {
       const avatar = collada.scene;
       avatar.scale.x = avatar.scale.y = avatar.scale.z = 0.2;
@@ -63,7 +74,7 @@ function init() {
   //
 
   const gridHelper = new THREE.GridHelper(10, 20, 0x888888, 0x444444);
-  scene.add(gridHelper);
+  // scene.add(gridHelper);
 
   //
 
@@ -86,7 +97,7 @@ function init() {
   controls = new OrbitControls(camera, renderer.domElement);
   controls.screenSpacePanning = true;
   controls.minDistance = 5;
-  controls.maxDistance = 40;
+  controls.maxDistance = 50;
   controls.target.set(0, 2, 0);
   controls.update();
 
@@ -116,6 +127,10 @@ function animate() {
 function render() {
   const delta = clock.getDelta();
 
+  // update the picking ray with the camera and mouse position
+  raycaster.setFromCamera(mouse, camera);
+  mouseRay = new THREE.Line3(raycaster.ray.origin, raycaster.ray.far);
+
   for (let f = 0; f < fishArray.length; f++) {
     const fish = fishArray[f];
     fish.update(delta);
@@ -144,7 +159,7 @@ class Fish {
     const targetPosition = this.getTargetPosition();
     this.velocity.add(targetPosition.sub(this.avatar.position).divideScalar(1));
 
-    this.mixer.timeScale = this.velocity.length() * 40;
+    this.mixer.timeScale = this.velocity.length() * 30;
     this.mixer.update(delta);
 
     this.avatar.position.add(this.velocity);
@@ -154,7 +169,6 @@ class Fish {
   };
 
   getTargetPosition = () => {
-    const centerWeight = getCenterWeight(this.avatar.position);
     const peerFishTargetPos = [];
     for (let f = 0; f < fishArray.length; f++) {
       const peerFish = fishArray[f];
@@ -170,19 +184,30 @@ class Fish {
     for (let p = 0; p < peerFishTargetPos.slice(1, 30).length; p++) {
       targetPosition.add(peerFishTargetPos[p].divideScalar(peerFishTargetPos.length * 0.4));
     }
-    for (let p = 0; p < peerFishTargetPos.slice(170, 199).length; p++) {
+    for (let p = 0; p < peerFishTargetPos.slice(120, 149).length; p++) {
       targetPosition.sub(peerFishTargetPos[p].divideScalar(peerFishTargetPos.length * 0.4));
     }
+    const centerWeight = getCenterWeight(this.avatar.position);
     targetPosition.divideScalar(centerWeight / 100000000 + 1);
+    let closestPoint = new THREE.Vector3();
+    mouseRay.closestPointToPoint(this.avatar.position, false, closestPoint);
+    const distanceToMouseRay = this.avatar.position.distanceTo(closestPoint);
+    // if (distanceToMouseRay < 4) {
+    //   const mouseRayWeight = getMouseRayWeight(distanceToMouseRay);
+    //   targetPosition.sub(closestPoint.sub(this.avatar.position).multiplyScalar(mouseRayWeight));
+    // }
     return targetPosition;
   };
 }
 
 const center = new THREE.Vector3();
 function getCenterWeight(position) {
-  return Math.pow(position.distanceTo(center), 2);
+  return Math.pow(position.distanceTo(center) - 20, 9) / 10000000;
+}
+function getMouseRayWeight(distanceToMouseRay) {
+  return 1 / Math.pow(distanceToMouseRay, 2) / 1000;
 }
 
 function getPeerWeight(position1, position2, velocity1, velocity2) {
-  return 1 / (Math.sqrt(position1.distanceTo(position2)) * Math.pow(velocity1.distanceTo(velocity2), 2)) / 100000;
+  return 1 / (Math.sqrt(position1.distanceTo(position2)) * Math.pow(velocity1.distanceTo(velocity2), 1)) / 1000000;
 }
